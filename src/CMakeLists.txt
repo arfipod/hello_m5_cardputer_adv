@@ -1,0 +1,12 @@
+idf_component_register(
+    SRCS
+        "main.cpp"
+        "app/App.cpp"
+        "../lib/common/src/ring_buffer.cpp"
+    INCLUDE_DIRS
+        "."
+        "../lib/common/include"
+    REQUIRES
+        esp_system
+        spi_flash
+)

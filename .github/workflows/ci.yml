@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+          key: ${{ runner.os }}-pio-${{ hashFiles('platformio.ini') }}
+          restore-keys: |
+            ${{ runner.os }}-pio-
+
+      - name: Install PlatformIO
+        run: pip install --upgrade platformio
+
+      - name: Run native tests
+        run: pio test -e native
+
+      - name: Build Cardputer-Adv firmware
+        run: pio run -e cardputer_adv
+
+      - name: Build fallback firmware
+        run: pio run -e cardputer_adv_devkit_fallback
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cardputer-adv-firmware
+          path: |
+            .pio/build/cardputer_adv/firmware.bin
+            .pio/build/cardputer_adv/bootloader.bin
+            .pio/build/cardputer_adv/partitions.bin
+            .pio/build/cardputer_adv/firmware.elf

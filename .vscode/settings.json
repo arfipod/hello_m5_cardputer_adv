@@ -1,0 +1,9 @@
+{
+  "C_Cpp.default.cppStandard": "c++17",
+  "C_Cpp.default.cStandard": "c11",
+  "files.associations": {
+    "*.hpp": "cpp",
+    "*.ipp": "cpp"
+  },
+  "platformio-ide.activateOnlyOnPlatformIOProject": true
+}
