@@ -29,11 +29,11 @@ void ring_buffer_rejects_overflow() {
 }
 
 void result_reports_success_and_error() {
-    auto ok = common::Result<int>::ok(42);
+    common::Result<int> ok = common::Result<int>::ok(42);
     TEST_ASSERT_TRUE(ok);
     TEST_ASSERT_EQUAL(42, ok.value());
 
-    auto err = common::Result<int>::err(common::Error::NotReady);
+    common::Result<int> err = common::Result<int>::err(common::Error::NotReady);
     TEST_ASSERT_FALSE(err);
     TEST_ASSERT_EQUAL(static_cast<int>(common::Error::NotReady), static_cast<int>(err.error()));
 }

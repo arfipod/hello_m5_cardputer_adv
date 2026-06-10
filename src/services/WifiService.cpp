@@ -29,7 +29,7 @@ void onWifiEvent(void* arg, esp_event_base_t event_base, int32_t event_id, void*
         if (s_wifi_events != nullptr) {
             xEventGroupClearBits(s_wifi_events, WIFI_CONNECTED_BIT);
         }
-        const auto* event = static_cast<wifi_event_sta_disconnected_t*>(event_data);
+        const wifi_event_sta_disconnected_t* event = static_cast<wifi_event_sta_disconnected_t*>(event_data);
         ESP_LOGW(TAG, "WiFi disconnected reason=%d", static_cast<int>(event->reason));
     }
 }
@@ -40,7 +40,7 @@ void onIpEvent(void* arg, esp_event_base_t event_base, int32_t event_id, void* e
         if (s_wifi_events != nullptr) {
             xEventGroupSetBits(s_wifi_events, WIFI_CONNECTED_BIT);
         }
-        const auto* event = static_cast<ip_event_got_ip_t*>(event_data);
+        const ip_event_got_ip_t* event = static_cast<ip_event_got_ip_t*>(event_data);
         ESP_LOGI(TAG, "WiFi got IPv4 " IPSTR, IP2STR(&event->ip_info.ip));
     }
 }
