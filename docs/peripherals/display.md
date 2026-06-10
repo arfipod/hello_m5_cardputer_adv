@@ -14,9 +14,9 @@ Expected sequence:
 1. Configure backlight GPIO.
 2. Initialize SPI host.
 3. Send the minimal ST7789 command sequence.
-4. Enable display and draw pixels.
+4. Enable display and draw pixels, shapes and basic text.
 
-Status: direct ESP-IDF SPI initialization and pixel drawing are prepared. Text rendering is a placeholder; rotation and offsets need hardware validation. `esp_lcd` remains a candidate for a future optional display backend after local compiler/build stability is verified.
+Status: direct ESP-IDF SPI initialization, pixel drawing, filled/outlined rectangles, lines and a compact 5x7 text renderer are prepared. The driver exposes the panel as 240 x 135 landscape and applies the Cardputer/Cardputer-Adv ST7789 address-window offsets X=40/Y=53. `esp_lcd` remains a candidate for a future optional display backend after local compiler/build stability is verified.
 
 Smoke test:
 

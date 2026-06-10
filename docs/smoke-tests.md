@@ -16,11 +16,11 @@ pio device monitor -p COM5 -b 115200
 | `cardputer_adv` | `boot_info` | Implemented. Prints chip, flash, heap, reset reason and pending bring-up hook results. |
 | `cardputer_adv_i2c_scan` | `i2c_scan` | Implemented. Reports all detected addresses and expected devices. |
 | `cardputer_adv_keyboard_test` | `keyboard_test` | Partial. TCA8418 register path and placeholder layout need hardware validation. |
-| `cardputer_adv_display_test` | `display_test` | Partial. Uses direct SPI ST7789 commands and draws bars/lines; text drawing is still a placeholder. |
+| `cardputer_adv_display_test` | `display_test` | Prepared. Uses direct SPI ST7789 commands and draws color bars, rectangles, diagonal lines and text. |
 | `cardputer_adv_audio_test` | `audio_test` | Stubbed for codec. ES8311 init returns `ESP_ERR_NOT_SUPPORTED`; tone is skipped until codec registers are implemented. |
 | `cardputer_adv_sd_test` | `sd_test` | Prepared. Mounts and lists `/sdcard`; write test is guarded by `APP_SMOKE_SD_WRITE=1`. |
 | `cardputer_adv_imu_test` | `imu_test` | Stubbed for BMI270 init. Probe is implemented, firmware/config upload is pending. |
-| `cardputer_adv_battery_test` | `battery_test` | Partial. ADC raw read works; voltage conversion needs divider/calibration values. |
+| `cardputer_adv_battery_test` | `battery_test` | Prepared. ADC raw read works and approximate voltage uses ESP-IDF ADC calibration plus the Cardputer/Cardputer-Adv 2.0 ratio. |
 | `cardputer_adv_ir_test` | `ir_test` | Prepared. Uses RMT copy encoder to send a short pattern. |
 | `cardputer_adv_lvgl_demo` | `lvgl_demo` | Pending. Builds with `APP_ENABLE_LVGL=1`, but LVGL dependency and screen are not added yet. |
 | `cardputer_adv_wifi_test` | `wifi_test` | Prepared. Enables WiFi, scans APs and optionally connects when temporary `APP_WIFI_SMOKE_SSID`/`APP_WIFI_SMOKE_PASSWORD` flags are provided. |
@@ -35,7 +35,7 @@ pio run -e cardputer_adv_full_smoke_test -t upload --upload-port COM5
 pio device monitor -p COM5 -b 115200
 ```
 
-During the keyboard step, press a few keys within the default 10 second window. The display should show color bars and a simple placeholder text marker. The IR step transmits a short raw pattern; verify it with an IR receiver or camera if needed.
+During the keyboard step, press a few keys within the default 10 second window. The display should show color bars, simple geometric shapes and readable text. The IR step transmits a short raw pattern; verify it with an IR receiver or camera if needed.
 
 WiFi credentials are intentionally not stored in this repository. For a local connection test, pass them as temporary build flags:
 

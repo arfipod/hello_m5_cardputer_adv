@@ -8,9 +8,9 @@ Expected sequence:
 1. Resolve ADC unit/channel from G10.
 2. Configure ADC oneshot.
 3. Read raw values.
-4. Apply calibrated conversion once divider values are confirmed.
+4. Apply ESP-IDF ADC calibration and the Cardputer/Cardputer-Adv 2.0 voltage ratio used by M5Unified.
 
-Status: raw ADC read is prepared. Voltage estimation returns `ESP_ERR_NOT_SUPPORTED` until calibration is added.
+Status: raw ADC read is prepared. Approximate battery voltage returns calibrated millivolts when the target supports ADC calibration. Charging status and current are not available on Cardputer/Cardputer-Adv hardware.
 
 Smoke test:
 

@@ -13,12 +13,12 @@ Date: 2026-06-10
 - Shared I2C bus wrapper with mutex, register helpers and scan.
 - I2S transport wrapper for 16-bit sample buffers.
 - RMT-based IR raw transmit wrapper.
-- ADC raw battery read path.
+- ADC raw battery read path and approximate calibrated battery millivolts.
 
 ## Prepared But Stubbed Or Partial
 
 - TCA8418 keyboard: register skeleton and placeholder logical map exist; matrix mapping needs hardware validation.
-- ST7789 display: direct ESP-IDF SPI init and pixel drawing exist; text/font rendering is a placeholder.
+- ST7789 display: direct ESP-IDF SPI init, pixel drawing, simple shapes and compact 5x7 text exist; geometry tuning needs hardware validation.
 - ES8311 codec: probe path exists; register initialization returns `ESP_ERR_NOT_SUPPORTED`.
 - BMI270 IMU: probe path exists; firmware/config upload returns `ESP_ERR_NOT_SUPPORTED`.
 - microSD: SDSPI mount/list path exists; write test is opt-in.
@@ -48,7 +48,7 @@ Date: 2026-06-10
 - ST7789V2 offsets, rotation and color order may require adjustment.
 - `esp_lcd` is not in the base build because the local fallback environment hit a compiler crash while compiling unused RGB panel code; it should be reintroduced only behind a verified optional backend.
 - Display and microSD use separate SPI hosts in the template; combined usage needs board validation.
-- Battery voltage conversion needs calibrated ADC and divider values.
+- Battery voltage conversion uses ESP-IDF ADC calibration and the Cardputer/Cardputer-Adv 2.0 voltage ratio; percentage/charging state still need policy-level validation.
 - IR output should be checked with a receiver before relying on timing.
 
 ## Build And Test Commands

@@ -29,6 +29,11 @@ public:
     esp_err_t init(const Config& config);
     esp_err_t clear(uint16_t rgb565);
     esp_err_t drawPixels(uint16_t x, uint16_t y, uint16_t width, uint16_t height, const uint16_t* pixels);
+    esp_err_t drawFilledRect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t rgb565);
+    esp_err_t drawRect(uint16_t x, uint16_t y, uint16_t width, uint16_t height, uint16_t rgb565);
+    esp_err_t drawLine(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint16_t rgb565);
+    esp_err_t drawText(uint16_t x, uint16_t y, const char* text, uint16_t rgb565);
+    esp_err_t drawText(uint16_t x, uint16_t y, const char* text, uint16_t foreground_rgb565, uint16_t background_rgb565);
     esp_err_t drawTextPlaceholder(uint16_t x, uint16_t y, const char* text, uint16_t rgb565);
     esp_err_t setBacklight(bool enabled);
 
@@ -40,6 +45,9 @@ private:
     esp_err_t sendCommand(uint8_t command);
     esp_err_t sendData(const void* data, size_t length);
     esp_err_t setAddressWindow(uint16_t x, uint16_t y, uint16_t width, uint16_t height);
+    esp_err_t writePixelsToCurrentWindow(const uint16_t* pixels, size_t count);
+    esp_err_t drawPixel(uint16_t x, uint16_t y, uint16_t rgb565);
+    esp_err_t drawGlyph(uint16_t x, uint16_t y, char character, uint16_t foreground_rgb565);
 };
 
 }  // namespace cardputer::hardware

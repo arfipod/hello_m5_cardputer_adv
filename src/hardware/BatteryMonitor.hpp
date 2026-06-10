@@ -1,5 +1,6 @@
 #pragma once
 
+#include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_err.h"
 
@@ -18,7 +19,11 @@ public:
     esp_err_t readApproxMillivolts(int& millivolts);
 
 private:
+    esp_err_t initCalibration();
+
     adc_oneshot_unit_handle_t unit_handle_ = nullptr;
+    adc_cali_handle_t calibration_handle_ = nullptr;
+    adc_cali_scheme_ver_t calibration_scheme_ = ADC_CALI_SCHEME_VER_CURVE_FITTING;
     adc_unit_t unit_ = ADC_UNIT_1;
     adc_channel_t channel_ = ADC_CHANNEL_0;
     bool initialized_ = false;

@@ -180,24 +180,36 @@ bool containsAddress(const std::array<uint8_t, 128>& addresses, size_t count, ui
 void drawDisplayPattern(hardware::St7789Display& display, SmokeSummary& summary) {
     constexpr uint16_t colors[] = {0xF800, 0x07E0, 0x001F, 0xFFE0, 0xFFFF, 0x0000};
     constexpr uint16_t bar_width = hardware::St7789Display::kWidth / (sizeof(colors) / sizeof(colors[0]));
-    static std::array<uint16_t, bar_width * hardware::St7789Display::kHeight> bar{};
+    constexpr uint16_t bar_height = 36;
     esp_err_t err = ESP_OK;
+    err = display.clear(0x0000);
+    if (err != ESP_OK) {
+        recordErr(summary, CheckStatus::Pass, "display clear", err);
+        return;
+    }
     for (size_t index = 0; index < sizeof(colors) / sizeof(colors[0]); ++index) {
-        bar.fill(colors[index]);
-        err = display.drawPixels(static_cast<uint16_t>(index * bar_width), 0, bar_width,
-                                 hardware::St7789Display::kHeight, bar.data());
+        err = display.drawFilledRect(static_cast<uint16_t>(index * bar_width), 0, bar_width, bar_height, colors[index]);
         if (err != ESP_OK) {
             recordErr(summary, CheckStatus::Pass, "display color bars", err);
             return;
         }
     }
 
+    (void)display.drawRect(0, 0, hardware::St7789Display::kWidth, hardware::St7789Display::kHeight, 0xFFFF);
+    (void)display.drawFilledRect(0, 0, 8, 8, 0xF800);
+    (void)display.drawFilledRect(hardware::St7789Display::kWidth - 8, 0, 8, 8, 0x07E0);
+    (void)display.drawFilledRect(0, hardware::St7789Display::kHeight - 8, 8, 8, 0x001F);
+    (void)display.drawFilledRect(hardware::St7789Display::kWidth - 8, hardware::St7789Display::kHeight - 8, 8, 8, 0xFFE0);
     std::array<uint16_t, hardware::St7789Display::kWidth> line{};
     line.fill(0xFFFF);
     (void)display.drawPixels(0, 0, hardware::St7789Display::kWidth, 1, line.data());
     (void)display.drawPixels(0, hardware::St7789Display::kHeight / 2, hardware::St7789Display::kWidth, 1, line.data());
-    (void)display.drawTextPlaceholder(8, 8, "FULL SMOKE", 0xFFFF);
-    recordCheck(summary, CheckStatus::Pass, "display pattern", "color bars drawn");
+    (void)display.drawRect(6, 44, 80, 34, 0xFFFF);
+    (void)display.drawFilledRect(12, 54, 24, 14, 0x07E0);
+    (void)display.drawLine(96, 44, 156, 78, 0xFFFF);
+    (void)display.drawLine(156, 44, 96, 78, 0xFFFF);
+    (void)display.drawText(8, 88, "FULL SMOKE", 0xFFFF, 0x0000);
+    recordCheck(summary, CheckStatus::Pass, "display pattern", "color bars, shapes and text drawn");
 }
 
 [[maybe_unused]] void runI2CScan() {
@@ -271,27 +283,43 @@ void drawDisplayPattern(hardware::St7789Display& display, SmokeSummary& summary)
         idleLoop("display_test");
     }
 
+    err = display.clear(0x0000);
+    ESP_LOGI(TAG, "display clear result=%s", esp_err_to_name(err));
+
     constexpr uint16_t colors[] = {0xF800, 0x07E0, 0x001F, 0xFFE0, 0xFFFF, 0x0000};
     constexpr uint16_t bar_width = hardware::St7789Display::kWidth / (sizeof(colors) / sizeof(colors[0]));
+    constexpr uint16_t bar_height = 36;
     for (size_t index = 0; index < sizeof(colors) / sizeof(colors[0]); ++index) {
-        std::array<uint16_t, bar_width * hardware::St7789Display::kHeight> bar{};
-        bar.fill(colors[index]);
-        err = display.drawPixels(static_cast<uint16_t>(index * bar_width), 0, bar_width,
-                                 hardware::St7789Display::kHeight, bar.data());
+        err = display.drawFilledRect(static_cast<uint16_t>(index * bar_width), 0, bar_width, bar_height, colors[index]);
         if (err != ESP_OK) {
             ESP_LOGW(TAG, "color bar draw failed: %s", esp_err_to_name(err));
             break;
         }
     }
 
+    err = display.drawRect(0, 0, hardware::St7789Display::kWidth, hardware::St7789Display::kHeight, 0xFFFF);
+    ESP_LOGI(TAG, "display draw full border result=%s", esp_err_to_name(err));
+    (void)display.drawFilledRect(0, 0, 8, 8, 0xF800);
+    (void)display.drawFilledRect(hardware::St7789Display::kWidth - 8, 0, 8, 8, 0x07E0);
+    (void)display.drawFilledRect(0, hardware::St7789Display::kHeight - 8, 8, 8, 0x001F);
+    (void)display.drawFilledRect(hardware::St7789Display::kWidth - 8, hardware::St7789Display::kHeight - 8, 8, 8, 0xFFE0);
+
     std::array<uint16_t, hardware::St7789Display::kWidth> line{};
     line.fill(0xFFFF);
     (void)display.drawPixels(0, 0, hardware::St7789Display::kWidth, 1, line.data());
     (void)display.drawPixels(0, hardware::St7789Display::kHeight / 2, hardware::St7789Display::kWidth, 1, line.data());
-    err = display.drawTextPlaceholder(8, 8, "CARDPUTER ADV", 0xFFFF);
-    if (err == ESP_ERR_NOT_SUPPORTED) {
-        ESP_LOGW(TAG, "text drawing is still a placeholder; add a font renderer or LVGL later");
-    }
+    err = display.drawRect(6, 44, 90, 36, 0xFFFF);
+    ESP_LOGI(TAG, "display draw rect result=%s", esp_err_to_name(err));
+    err = display.drawFilledRect(14, 56, 28, 14, 0x07E0);
+    ESP_LOGI(TAG, "display draw filled rect result=%s", esp_err_to_name(err));
+    err = display.drawLine(108, 44, 172, 80, 0xFFFF);
+    ESP_LOGI(TAG, "display draw line A result=%s", esp_err_to_name(err));
+    err = display.drawLine(172, 44, 108, 80, 0xFFFF);
+    ESP_LOGI(TAG, "display draw line B result=%s", esp_err_to_name(err));
+    err = display.drawText(8, 90, "CARDPUTER ADV", 0xFFFF, 0x0000);
+    ESP_LOGI(TAG, "display draw text result=%s", esp_err_to_name(err));
+    err = display.drawText(8, 106, "SHAPES + TEXT OK", 0xFFE0, 0x0000);
+    ESP_LOGI(TAG, "display draw text 2 result=%s", esp_err_to_name(err));
     idleLoop("display_test");
 }
 
