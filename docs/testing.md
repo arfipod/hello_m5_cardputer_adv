@@ -19,5 +19,11 @@ Optional WiFi smoke build:
 pio run -e cardputer_adv_wifi_test
 ```
 
+Full board smoke build:
+
+```sh
+pio run -e cardputer_adv_full_smoke_test
+```
+
 GitHub Actions runs all three commands. Hardware flashing is intentionally not
 part of CI.

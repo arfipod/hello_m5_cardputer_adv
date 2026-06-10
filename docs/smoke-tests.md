@@ -24,8 +24,28 @@ pio device monitor -p COM5 -b 115200
 | `cardputer_adv_ir_test` | `ir_test` | Prepared. Uses RMT copy encoder to send a short pattern. |
 | `cardputer_adv_lvgl_demo` | `lvgl_demo` | Pending. Builds with `APP_ENABLE_LVGL=1`, but LVGL dependency and screen are not added yet. |
 | `cardputer_adv_wifi_test` | `wifi_test` | Prepared. Enables WiFi, scans APs and optionally connects when temporary `APP_WIFI_SMOKE_SSID`/`APP_WIFI_SMOKE_PASSWORD` flags are provided. |
+| `cardputer_adv_full_smoke_test` | `full_smoke_test` | Board-level smoke test. Runs boot info, I2C scan, keyboard interaction window, display pattern, battery ADC, IR transmit, audio/I2S checks, SD mount, WiFi scan/connect and pending hook checks. |
 
 The default boot path also calls the ES8311, BMI270, LVGL, WiFi, BLE and USB init hooks once. ES8311, BMI270, LVGL, BLE and USB are intentionally non-invasive stubs and should report `ESP_ERR_NOT_SUPPORTED` until the real dependency and board bring-up sequences are added. WiFi becomes a real ESP-IDF station service only when `APP_ENABLE_WIFI=1`.
+
+## Full Board Smoke Test
+
+```bash
+pio run -e cardputer_adv_full_smoke_test -t upload --upload-port COM5
+pio device monitor -p COM5 -b 115200
+```
+
+During the keyboard step, press a few keys within the default 10 second window. The display should show color bars and a simple placeholder text marker. The IR step transmits a short raw pattern; verify it with an IR receiver or camera if needed.
+
+WiFi credentials are intentionally not stored in this repository. For a local connection test, pass them as temporary build flags:
+
+```bash
+$env:PLATFORMIO_BUILD_FLAGS='-DAPP_WIFI_SMOKE_SSID=\"your-ssid\" -DAPP_WIFI_SMOKE_PASSWORD=\"your-password\"'
+pio run -e cardputer_adv_full_smoke_test -t upload --upload-port COM5
+Remove-Item Env:\PLATFORMIO_BUILD_FLAGS
+```
+
+The serial log ends with `FULL_SMOKE_SUMMARY pass=<n> warn=<n> fail=<n>`. Warnings are expected for template hooks that still return `ESP_ERR_NOT_SUPPORTED` or for optional hardware that is not attached.
 
 ## Validation Matrix
 
@@ -43,6 +63,7 @@ pio run -e cardputer_adv_battery_test
 pio run -e cardputer_adv_ir_test
 pio run -e cardputer_adv_lvgl_demo
 pio run -e cardputer_adv_wifi_test
+pio run -e cardputer_adv_full_smoke_test
 ```
 
 CI builds the default firmware, fallback firmware and selected smoke images. CI never flashes hardware.

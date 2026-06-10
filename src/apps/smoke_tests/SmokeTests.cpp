@@ -25,6 +25,8 @@
 #include "hardware/SdCard.hpp"
 #include "hardware/St7789Display.hpp"
 #include "hardware/Tca8418Keyboard.hpp"
+#include "services/BleService.hpp"
+#include "services/UsbService.hpp"
 #include "services/WifiService.hpp"
 #include "ui/LvglPort.hpp"
 
@@ -61,8 +63,14 @@
 #ifndef APP_MODE_WIFI_TEST
 #define APP_MODE_WIFI_TEST 0
 #endif
+#ifndef APP_MODE_FULL_SMOKE_TEST
+#define APP_MODE_FULL_SMOKE_TEST 0
+#endif
 #ifndef APP_SMOKE_SD_WRITE
 #define APP_SMOKE_SD_WRITE 0
+#endif
+#ifndef APP_FULL_SMOKE_KEYBOARD_MS
+#define APP_FULL_SMOKE_KEYBOARD_MS 10000
 #endif
 #ifndef APP_WIFI_SMOKE_SSID
 #define APP_WIFI_SMOKE_SSID ""
@@ -74,6 +82,39 @@
 namespace cardputer::app::smoke_tests {
 namespace {
 constexpr const char* TAG = "smoke";
+
+enum class CheckStatus : uint8_t {
+    Pass,
+    Warn,
+    Fail,
+};
+
+struct SmokeSummary {
+    uint16_t passed = 0;
+    uint16_t warnings = 0;
+    uint16_t failed = 0;
+};
+
+void recordCheck(SmokeSummary& summary, CheckStatus status, const char* name, const char* detail) {
+    switch (status) {
+        case CheckStatus::Pass:
+            ++summary.passed;
+            ESP_LOGI(TAG, "[PASS] %s: %s", name, detail);
+            break;
+        case CheckStatus::Warn:
+            ++summary.warnings;
+            ESP_LOGW(TAG, "[WARN] %s: %s", name, detail);
+            break;
+        case CheckStatus::Fail:
+            ++summary.failed;
+            ESP_LOGE(TAG, "[FAIL] %s: %s", name, detail);
+            break;
+    }
+}
+
+void recordErr(SmokeSummary& summary, CheckStatus ok_status, const char* name, esp_err_t err) {
+    recordCheck(summary, err == ESP_OK ? ok_status : CheckStatus::Fail, name, esp_err_to_name(err));
+}
 
 void idleLoop(const char* mode) {
     uint32_t heartbeat = 0;
@@ -134,6 +175,29 @@ bool containsAddress(const std::array<uint8_t, 128>& addresses, size_t count, ui
         }
     }
     return false;
+}
+
+void drawDisplayPattern(hardware::St7789Display& display, SmokeSummary& summary) {
+    constexpr uint16_t colors[] = {0xF800, 0x07E0, 0x001F, 0xFFE0, 0xFFFF, 0x0000};
+    constexpr uint16_t bar_width = hardware::St7789Display::kWidth / (sizeof(colors) / sizeof(colors[0]));
+    static std::array<uint16_t, bar_width * hardware::St7789Display::kHeight> bar{};
+    esp_err_t err = ESP_OK;
+    for (size_t index = 0; index < sizeof(colors) / sizeof(colors[0]); ++index) {
+        bar.fill(colors[index]);
+        err = display.drawPixels(static_cast<uint16_t>(index * bar_width), 0, bar_width,
+                                 hardware::St7789Display::kHeight, bar.data());
+        if (err != ESP_OK) {
+            recordErr(summary, CheckStatus::Pass, "display color bars", err);
+            return;
+        }
+    }
+
+    std::array<uint16_t, hardware::St7789Display::kWidth> line{};
+    line.fill(0xFFFF);
+    (void)display.drawPixels(0, 0, hardware::St7789Display::kWidth, 1, line.data());
+    (void)display.drawPixels(0, hardware::St7789Display::kHeight / 2, hardware::St7789Display::kWidth, 1, line.data());
+    (void)display.drawTextPlaceholder(8, 8, "FULL SMOKE", 0xFFFF);
+    recordCheck(summary, CheckStatus::Pass, "display pattern", "color bars drawn");
 }
 
 [[maybe_unused]] void runI2CScan() {
@@ -428,6 +492,222 @@ bool containsAddress(const std::array<uint8_t, 128>& addresses, size_t count, ui
 #endif
     idleLoop("wifi_test");
 }
+
+[[maybe_unused]] void runFullSmokeTest() {
+    ESP_LOGI(TAG, "mode=full_smoke_test");
+    SmokeSummary summary{};
+
+    esp_chip_info_t chip_info{};
+    esp_chip_info(&chip_info);
+    uint32_t flash_size = 0;
+    esp_err_t err = esp_flash_get_size(nullptr, &flash_size);
+    recordErr(summary, CheckStatus::Pass, "flash info", err);
+    ESP_LOGI(TAG, "chip cores=%d features=0x%lx revision=%d flash=%lu bytes reset=%s",
+             chip_info.cores, static_cast<unsigned long>(chip_info.features), chip_info.revision,
+             static_cast<unsigned long>(flash_size), resetReasonName(esp_reset_reason()));
+
+    hardware::I2CBus bus;
+    err = bus.init();
+    recordErr(summary, CheckStatus::Pass, "I2C init", err);
+
+    std::array<uint8_t, 128> addresses{};
+    size_t address_count = 0;
+    if (err == ESP_OK) {
+        err = bus.scan(addresses, address_count);
+        recordErr(summary, CheckStatus::Pass, "I2C scan", err);
+        ESP_LOGI(TAG, "I2C devices found=%u", static_cast<unsigned>(address_count));
+        for (size_t index = 0; index < address_count; ++index) {
+            ESP_LOGI(TAG, " - 0x%02x", addresses[index]);
+        }
+        recordCheck(summary,
+                    containsAddress(addresses, address_count, hardware::Tca8418Keyboard::kAddress) ? CheckStatus::Pass : CheckStatus::Warn,
+                    "TCA8418 address", "expected 0x34");
+        recordCheck(summary,
+                    containsAddress(addresses, address_count, hardware::Bmi270Imu::kAddress) ? CheckStatus::Pass : CheckStatus::Warn,
+                    "BMI270 address", "expected 0x69");
+        recordCheck(summary,
+                    containsAddress(addresses, address_count, hardware::Es8311Codec::kDefaultAddress) ? CheckStatus::Pass : CheckStatus::Warn,
+                    "ES8311 address", "candidate 0x18");
+    }
+
+    if (bus.isInitialized()) {
+        hardware::Tca8418Keyboard keyboard(bus);
+        err = keyboard.init();
+        recordErr(summary, CheckStatus::Pass, "keyboard init", err);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "Press keyboard buttons now; listening for %u ms",
+                     static_cast<unsigned>(APP_FULL_SMOKE_KEYBOARD_MS));
+            uint16_t key_events = 0;
+            const TickType_t end_tick = xTaskGetTickCount() + pdMS_TO_TICKS(APP_FULL_SMOKE_KEYBOARD_MS);
+            while (xTaskGetTickCount() < end_tick) {
+                hardware::Tca8418Keyboard::KeyEvent event{};
+                bool has_event = false;
+                err = keyboard.readKeyEvent(event, has_event);
+                if (err != ESP_OK) {
+                    ESP_LOGW(TAG, "keyboard read failed: %s", esp_err_to_name(err));
+                    break;
+                }
+                if (has_event) {
+                    ++key_events;
+                    ESP_LOGI(TAG, "key event row=%u col=%u state=%s logical=0x%04x ascii='%c'",
+                             event.raw.row, event.raw.column,
+                             event.raw.state == hardware::Tca8418Keyboard::KeyState::Pressed ? "pressed" : "released",
+                             event.logical_code, event.ascii == '\0' ? ' ' : event.ascii);
+                }
+                vTaskDelay(pdMS_TO_TICKS(20));
+            }
+            char detail[48]{};
+            std::snprintf(detail, sizeof(detail), "%u events", static_cast<unsigned>(key_events));
+            recordCheck(summary, key_events > 0 ? CheckStatus::Pass : CheckStatus::Warn, "keyboard interaction", detail);
+        }
+
+        hardware::Bmi270Imu imu(bus);
+        uint8_t chip_id = 0;
+        err = imu.probe(chip_id);
+        char imu_detail[48]{};
+        std::snprintf(imu_detail, sizeof(imu_detail), "%s chip_id=0x%02x", esp_err_to_name(err), chip_id);
+        recordCheck(summary, err == ESP_OK ? CheckStatus::Pass : CheckStatus::Warn, "BMI270 probe", imu_detail);
+        err = imu.init();
+        recordCheck(summary, err == ESP_ERR_NOT_SUPPORTED ? CheckStatus::Warn : (err == ESP_OK ? CheckStatus::Pass : CheckStatus::Fail),
+                    "BMI270 init", esp_err_to_name(err));
+
+        hardware::Es8311Codec codec(bus);
+        err = codec.probe();
+        recordCheck(summary, err == ESP_OK ? CheckStatus::Pass : CheckStatus::Warn, "ES8311 probe", esp_err_to_name(err));
+        err = codec.init(44100);
+        recordCheck(summary, err == ESP_ERR_NOT_SUPPORTED ? CheckStatus::Warn : (err == ESP_OK ? CheckStatus::Pass : CheckStatus::Fail),
+                    "ES8311 init", esp_err_to_name(err));
+    }
+
+    hardware::St7789Display display;
+    err = display.init();
+    recordErr(summary, CheckStatus::Pass, "display init", err);
+    if (err == ESP_OK) {
+        drawDisplayPattern(display, summary);
+        err = display.setBacklight(true);
+        recordErr(summary, CheckStatus::Pass, "display backlight", err);
+    }
+
+    hardware::BatteryMonitor battery;
+    err = battery.init();
+    recordErr(summary, CheckStatus::Pass, "battery ADC init", err);
+    if (err == ESP_OK) {
+        int raw = 0;
+        err = battery.readRaw(raw);
+        char detail[48]{};
+        std::snprintf(detail, sizeof(detail), "%s raw=%d", esp_err_to_name(err), raw);
+        recordCheck(summary, err == ESP_OK ? CheckStatus::Pass : CheckStatus::Fail, "battery raw", detail);
+        int millivolts = 0;
+        err = battery.readApproxMillivolts(millivolts);
+        std::snprintf(detail, sizeof(detail), "%s approx_mv=%d", esp_err_to_name(err), millivolts);
+        recordCheck(summary, err == ESP_ERR_NOT_SUPPORTED ? CheckStatus::Warn : (err == ESP_OK ? CheckStatus::Pass : CheckStatus::Fail),
+                    "battery voltage", detail);
+    }
+
+    hardware::IrTransmitter ir;
+    err = ir.init();
+    recordErr(summary, CheckStatus::Pass, "IR init", err);
+    if (err == ESP_OK) {
+        const rmt_symbol_word_t pattern[] = {
+            {.duration0 = 9000, .level0 = 1, .duration1 = 4500, .level1 = 0},
+            {.duration0 = 560, .level0 = 1, .duration1 = 560, .level1 = 0},
+            {.duration0 = 560, .level0 = 1, .duration1 = 1690, .level1 = 0},
+        };
+        err = ir.transmitRaw(pattern, sizeof(pattern) / sizeof(pattern[0]));
+        recordErr(summary, CheckStatus::Pass, "IR transmit", err);
+    }
+
+    hardware::I2SAudio i2s;
+    err = i2s.init({.sample_rate_hz = 44100, .enable_input = false});
+    recordCheck(summary, err == ESP_OK ? CheckStatus::Pass : CheckStatus::Warn, "I2S init", esp_err_to_name(err));
+    if (err == ESP_OK) {
+        (void)i2s.stop();
+    }
+
+    hardware::SdCard sd;
+    err = sd.mount();
+    recordCheck(summary, err == ESP_OK ? CheckStatus::Pass : CheckStatus::Warn, "microSD mount", esp_err_to_name(err));
+    if (err == ESP_OK) {
+        DIR* dir = opendir("/sdcard");
+        if (dir != nullptr) {
+            uint8_t entries = 0;
+            while (entries < 8) {
+                dirent* entry = readdir(dir);
+                if (entry == nullptr) {
+                    break;
+                }
+                ESP_LOGI(TAG, "sd root entry: %s", entry->d_name);
+                ++entries;
+            }
+            closedir(dir);
+            recordCheck(summary, CheckStatus::Pass, "microSD list", "root directory opened");
+        } else {
+            recordCheck(summary, CheckStatus::Warn, "microSD list", "could not open /sdcard");
+        }
+        (void)sd.unmount();
+    }
+
+#if APP_ENABLE_WIFI
+    services::WifiService wifi;
+    err = wifi.init();
+    recordErr(summary, CheckStatus::Pass, "WiFi init", err);
+    if (err == ESP_OK) {
+        std::array<services::WifiService::AccessPoint, services::WifiService::kMaxScanResults> aps{};
+        uint16_t count = aps.size();
+        err = wifi.scan(aps.data(), count);
+        char detail[48]{};
+        std::snprintf(detail, sizeof(detail), "%s count=%u", esp_err_to_name(err), static_cast<unsigned>(count));
+        recordCheck(summary, err == ESP_OK ? CheckStatus::Pass : CheckStatus::Fail, "WiFi scan", detail);
+        for (uint16_t index = 0; err == ESP_OK && index < count; ++index) {
+            ESP_LOGI(TAG, "wifi ap ssid='%s' rssi=%d channel=%u encrypted=%d",
+                     aps[index].ssid, aps[index].rssi,
+                     static_cast<unsigned>(aps[index].channel), aps[index].encrypted);
+        }
+
+        if (std::strlen(APP_WIFI_SMOKE_SSID) > 0U) {
+            err = wifi.connectStation(APP_WIFI_SMOKE_SSID, APP_WIFI_SMOKE_PASSWORD);
+            recordErr(summary, CheckStatus::Pass, "WiFi connect start", err);
+            if (err == ESP_OK) {
+                err = wifi.waitForConnection(15000);
+                recordCheck(summary, err == ESP_OK ? CheckStatus::Pass : CheckStatus::Fail,
+                            "WiFi connection", esp_err_to_name(err));
+            }
+        } else {
+            recordCheck(summary, CheckStatus::Warn, "WiFi connection", "APP_WIFI_SMOKE_SSID not provided");
+        }
+        (void)wifi.disconnect();
+        (void)wifi.stop();
+    }
+#else
+    recordCheck(summary, CheckStatus::Warn, "WiFi", "APP_ENABLE_WIFI=0");
+#endif
+
+    ui::LvglPort lvgl;
+    err = lvgl.init();
+    recordCheck(summary, err == ESP_ERR_NOT_SUPPORTED ? CheckStatus::Warn : (err == ESP_OK ? CheckStatus::Pass : CheckStatus::Fail),
+                "LVGL hook", esp_err_to_name(err));
+
+    services::BleService ble;
+    err = ble.init();
+    recordCheck(summary, err == ESP_ERR_NOT_SUPPORTED ? CheckStatus::Warn : (err == ESP_OK ? CheckStatus::Pass : CheckStatus::Fail),
+                "BLE hook", esp_err_to_name(err));
+
+    services::UsbService usb;
+    err = usb.init();
+    recordCheck(summary, err == ESP_ERR_NOT_SUPPORTED ? CheckStatus::Warn : (err == ESP_OK ? CheckStatus::Pass : CheckStatus::Fail),
+                "USB hook", esp_err_to_name(err));
+
+    ESP_LOGI(TAG, "FULL_SMOKE_SUMMARY pass=%u warn=%u fail=%u",
+             static_cast<unsigned>(summary.passed),
+             static_cast<unsigned>(summary.warnings),
+             static_cast<unsigned>(summary.failed));
+    if (summary.failed == 0) {
+        ESP_LOGI(TAG, "FULL_SMOKE_RESULT PASS_WITH_WARNINGS_ALLOWED");
+    } else {
+        ESP_LOGE(TAG, "FULL_SMOKE_RESULT FAIL");
+    }
+    idleLoop("full_smoke_test");
+}
 }  // namespace
 
 void runSelectedMode() {
@@ -451,6 +731,8 @@ void runSelectedMode() {
     runLvglDemo();
 #elif APP_MODE_WIFI_TEST
     runWifiTest();
+#elif APP_MODE_FULL_SMOKE_TEST
+    runFullSmokeTest();
 #else
     runBootInfo();
 #endif
