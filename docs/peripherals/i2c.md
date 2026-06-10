@@ -1,15 +1,24 @@
 # I2C
 
-The Cardputer-Adv shared I2C bus uses:
+The Cardputer-Adv shared I2C bus is on G8/G9 and is used by:
 
-- SDA: G8
-- SCL: G9
+- TCA8418 keyboard at `0x34`
+- BMI270 IMU at `0x69`
+- ES8311 codec candidate address `0x18`
+- Grove/EXT devices if attached to the same lines
 
-Known onboard devices:
+The `I2CBus` wrapper owns ESP-IDF I2C master initialization, a FreeRTOS mutex, register helpers and a scan helper.
 
-- TCA8418 keyboard, expected `0x34`
-- BMI270 IMU, expected `0x69`
-- ES8311 codec, candidate `0x18` or `0x19`
+Expected sequence:
 
-The `I2CBus` class owns initialization, scanning, register reads/writes and a
-FreeRTOS mutex.
+1. Construct `hardware::I2CBus`.
+2. Call `init()`.
+3. Share the bus reference with device drivers.
+4. Use driver APIs instead of hardcoding transactions in app code.
+
+Smoke test:
+
+```bash
+pio run -e cardputer_adv_i2c_scan -t upload --upload-port COM5
+pio device monitor -p COM5 -b 115200
+```

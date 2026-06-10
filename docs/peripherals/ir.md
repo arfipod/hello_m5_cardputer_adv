@@ -1,6 +1,19 @@
 # Infrared
 
-IR TX is on G44.
+- TX pin: G44
+- API: ESP-IDF RMT TX
 
-ESP-IDF RMT is the intended implementation path for carrier-based IR protocols.
-The current driver initializes the GPIO and exposes a raw mark/space API shape.
+Expected sequence:
+
+1. Initialize RMT TX on G44.
+2. Configure carrier, typically 38 kHz.
+3. Transmit raw RMT symbols or a protocol encoder.
+
+Status: raw symbol transmit is prepared. Protocol helpers are intentionally not included yet.
+
+Smoke test:
+
+```bash
+pio run -e cardputer_adv_ir_test -t upload --upload-port COM5
+pio device monitor -p COM5 -b 115200
+```

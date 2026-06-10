@@ -1,46 +1,32 @@
 # M5 Cardputer-Adv ESP-IDF Template
 
-Reusable base template for M5 Cardputer-Adv development with VS Code,
-PlatformIO, ESP-IDF and C++17.
+Reusable base template for M5 Cardputer-Adv development with VS Code, PlatformIO, ESP-IDF and C++17.
 
-This repository is intentionally application-neutral. It provides a buildable
-project skeleton, pin map, documentation, CI, and portable host-testable common
-code. Real display, keyboard, audio, IMU, SD, battery and IR drivers are planned
-but not implemented in this skeleton step.
+This repository is intentionally application-neutral. It provides a buildable project skeleton, a single pin map, hardware abstraction boundaries, smoke-test firmware modes, CI, documentation and portable host-testable common code.
 
-## What Is Implemented
+## Implemented
 
 - PlatformIO ESP-IDF environments for `m5stack-stamps3` and `esp32-s3-devkitc-1`.
 - Native test environment for portable code.
-- Minimal `app_main()` that configures logging, prints chip information and starts `App`.
-- Generic `App` loop with subsystem feature flag reporting.
+- Generic `app_main()` and `App` shell.
+- Build-flag-selected smoke-test modes.
 - `src/hardware/BoardPins.hpp` as the single source of truth for pin mapping.
-- `lib/common` with small portable helpers and tests.
-- VS Code recommendations.
+- HAL scaffolding for I2C, TCA8418, ES8311, I2S, ST7789, BMI270, microSD, battery ADC and IR.
+- Optional service shells for LVGL, USB, WiFi and BLE.
 - GitHub Actions CI.
-- Documentation for setup, flashing, architecture, pinout, testing and troubleshooting.
 
-## What Is Planned
+## Status
 
-- ESP-IDF-native peripheral drivers.
-- Shared I2C bus abstraction for TCA8418, ES8311 and BMI270.
-- Display abstraction for ST7789V2.
-- Audio abstraction for ES8311 and I2S.
-- microSD, battery, IR and IMU services.
-- Optional LVGL and USB/TinyUSB integration.
-- Hardware smoke examples for manual validation.
+Some paths are real and buildable but still require hardware validation. ES8311 codec init, BMI270 init, LVGL UI and USB/WiFi/BLE behavior are intentionally stubbed until their dependencies and board-specific sequences are verified.
 
-## Build
+See [docs/audits/template-readiness-audit.md](docs/audits/template-readiness-audit.md).
 
-```sh
-pio run -e cardputer_adv
-pio run -e cardputer_adv_devkit_fallback
-```
-
-## Test
+## Build And Test
 
 ```sh
 pio test -e native
+pio run -e cardputer_adv
+pio run -e cardputer_adv_devkit_fallback
 ```
 
 ## Upload And Monitor
@@ -50,15 +36,25 @@ pio run -e cardputer_adv -t upload --upload-port COM5
 pio device monitor -p COM5 -b 115200
 ```
 
+Smoke tests are selected by environment:
+
+```sh
+pio run -e cardputer_adv_i2c_scan -t upload --upload-port COM5
+pio device monitor -p COM5 -b 115200
+```
+
+See [docs/smoke-tests.md](docs/smoke-tests.md).
+
 ## Layout
 
 ```text
-src/main.cpp        ESP-IDF entrypoint
-src/app/            generic app shell, events and state
-src/hardware/       board-specific pin map and future hardware abstractions
-src/services/       future app-facing subsystem services
-src/ui/             future UI integration
-lib/common/         portable code shared by firmware and host tests
-test/               PlatformIO native tests
-docs/               usage, architecture and hardware notes
+src/main.cpp              ESP-IDF entrypoint
+src/app/                  generic app shell, events and state
+src/apps/smoke_tests/     build-selected hardware smoke modes
+src/hardware/             Cardputer-Adv HAL and pin map
+src/services/             optional service shells
+src/ui/                   UI integration shells
+lib/common/               portable code shared by firmware and host tests
+test/                     PlatformIO native tests
+docs/                     usage, architecture and hardware notes
 ```

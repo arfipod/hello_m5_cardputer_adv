@@ -2,11 +2,35 @@ idf_component_register(
     SRCS
         "main.cpp"
         "app/App.cpp"
+        "apps/smoke_tests/SmokeTests.cpp"
+        "hardware/I2CBus.cpp"
+        "hardware/Tca8418Keyboard.cpp"
+        "hardware/Es8311Codec.cpp"
+        "hardware/I2SAudio.cpp"
+        "hardware/St7789Display.cpp"
+        "hardware/Bmi270Imu.cpp"
+        "hardware/SdCard.cpp"
+        "hardware/BatteryMonitor.cpp"
+        "hardware/IrTransmitter.cpp"
+        "ui/UiPort.cpp"
+        "ui/LvglPort.cpp"
+        "services/WifiService.cpp"
+        "services/BleService.cpp"
+        "services/UsbService.cpp"
         "../lib/common/src/ring_buffer.cpp"
     INCLUDE_DIRS
         "."
         "../lib/common/include"
     REQUIRES
         esp_system
+        esp_driver_gpio
+        esp_driver_i2c
+        esp_driver_i2s
+        esp_driver_rmt
+        esp_driver_spi
+        esp_adc
+        fatfs
+        sdmmc
+        nvs_flash
         spi_flash
 )

@@ -38,6 +38,11 @@ jobs:
       - name: Build fallback firmware
         run: pio run -e cardputer_adv_devkit_fallback
 
+      - name: Build selected smoke-test firmware
+        run: |
+          pio run -e cardputer_adv_i2c_scan
+          pio run -e cardputer_adv_battery_test
+
       - name: Upload firmware artifacts
         uses: actions/upload-artifact@v4
         with:

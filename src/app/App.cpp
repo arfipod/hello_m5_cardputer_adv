@@ -1,8 +1,7 @@
 #include "app/App.hpp"
 
+#include "apps/smoke_tests/SmokeTests.hpp"
 #include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "hardware/BoardPins.hpp"
 
 namespace cardputer::app {
@@ -19,11 +18,7 @@ void App::run() {
              APP_ENABLE_DISPLAY, APP_ENABLE_KEYBOARD, APP_ENABLE_AUDIO, APP_ENABLE_IMU,
              APP_ENABLE_SD, APP_ENABLE_BATTERY, APP_ENABLE_IR, APP_ENABLE_LVGL, APP_ENABLE_USB);
 
-    uint32_t heartbeat = 0;
-    while (true) {
-        ESP_LOGI(TAG, "heartbeat=%lu", static_cast<unsigned long>(heartbeat++));
-        vTaskDelay(pdMS_TO_TICKS(5000));
-    }
+    smoke_tests::runSelectedMode();
 }
 
 }  // namespace cardputer::app
