@@ -23,6 +23,9 @@ idf_component_register(
         "../lib/common/include"
     REQUIRES
         esp_system
+        esp_event
+        esp_netif
+        esp_wifi
         esp_driver_gpio
         esp_driver_i2c
         esp_driver_i2s

@@ -17,4 +17,6 @@ The repository is a small ESP-IDF app component with portable code in `lib/`.
 - Hardware code stays under `src/hardware`.
 - Portable code stays under `lib/`.
 - Feature flags exist for subsystems, but real drivers are not implemented yet.
+- ES8311, BMI270, LVGL, BLE and USB expose explicit hooks. When the real bring-up sequence is missing, the hook returns `ESP_ERR_NOT_SUPPORTED`.
+- WiFi exposes an opt-in ESP-IDF station service for init, scan, connect and connection wait.
 - LVGL and USB are prepared with flags only; dependencies are not added yet.

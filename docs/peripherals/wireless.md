@@ -2,14 +2,30 @@
 
 WiFi and BLE services are intentionally optional and disabled by default.
 
-Status: service shells only. No credentials, provisioning, scanning, GATT services or network tasks are implemented.
+## WiFi
+
+Status: basic ESP-IDF station service. `WifiService` can initialize NVS/netif/event loop/WiFi, start station mode, scan nearby access points, connect with caller-provided credentials and wait for an IPv4 address.
+
+Credentials are never stored in the template. Pass them from an app-specific configuration layer, NVS provisioning, secure storage or temporary smoke-test build flags.
+
+Smoke test:
+
+```bash
+pio run -e cardputer_adv_wifi_test
+```
+
+To test a real connection locally, pass credentials as temporary build flags instead of editing tracked files.
+
+## BLE
+
+Status: service shell only. BLE init and advertising hooks return `ESP_ERR_NOT_SUPPORTED` until the project chooses and wires a concrete host stack, GAP advertising payload and GATT services.
 
 Expected future sequence:
 
-1. Enable `APP_ENABLE_WIFI=1` or `APP_ENABLE_BLE=1`.
-2. Add explicit service ownership in the app.
-3. Store credentials through an intentional project-specific path, never in the template.
-4. Add smoke tests for scan-only WiFi and BLE advertising/scanning.
+1. Enable `APP_ENABLE_BLE=1`.
+2. Choose NimBLE or Bluedroid for the target memory/features.
+3. Add explicit service ownership in the app.
+4. Add smoke tests for BLE advertising/scanning.
 
 Known risks:
 

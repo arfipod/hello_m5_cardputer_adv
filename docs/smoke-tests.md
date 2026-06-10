@@ -13,7 +13,7 @@ pio device monitor -p COM5 -b 115200
 
 | Environment | Mode | Status |
 | --- | --- | --- |
-| `cardputer_adv` | `boot_info` | Implemented. Prints chip, flash, heap and reset reason. |
+| `cardputer_adv` | `boot_info` | Implemented. Prints chip, flash, heap, reset reason and pending bring-up hook results. |
 | `cardputer_adv_i2c_scan` | `i2c_scan` | Implemented. Reports all detected addresses and expected devices. |
 | `cardputer_adv_keyboard_test` | `keyboard_test` | Partial. TCA8418 register path and placeholder layout need hardware validation. |
 | `cardputer_adv_display_test` | `display_test` | Partial. Uses direct SPI ST7789 commands and draws bars/lines; text drawing is still a placeholder. |
@@ -23,6 +23,9 @@ pio device monitor -p COM5 -b 115200
 | `cardputer_adv_battery_test` | `battery_test` | Partial. ADC raw read works; voltage conversion needs divider/calibration values. |
 | `cardputer_adv_ir_test` | `ir_test` | Prepared. Uses RMT copy encoder to send a short pattern. |
 | `cardputer_adv_lvgl_demo` | `lvgl_demo` | Pending. Builds with `APP_ENABLE_LVGL=1`, but LVGL dependency and screen are not added yet. |
+| `cardputer_adv_wifi_test` | `wifi_test` | Prepared. Enables WiFi, scans APs and optionally connects when temporary `APP_WIFI_SMOKE_SSID`/`APP_WIFI_SMOKE_PASSWORD` flags are provided. |
+
+The default boot path also calls the ES8311, BMI270, LVGL, WiFi, BLE and USB init hooks once. ES8311, BMI270, LVGL, BLE and USB are intentionally non-invasive stubs and should report `ESP_ERR_NOT_SUPPORTED` until the real dependency and board bring-up sequences are added. WiFi becomes a real ESP-IDF station service only when `APP_ENABLE_WIFI=1`.
 
 ## Validation Matrix
 
@@ -39,6 +42,7 @@ pio run -e cardputer_adv_imu_test
 pio run -e cardputer_adv_battery_test
 pio run -e cardputer_adv_ir_test
 pio run -e cardputer_adv_lvgl_demo
+pio run -e cardputer_adv_wifi_test
 ```
 
 CI builds the default firmware, fallback firmware and selected smoke images. CI never flashes hardware.

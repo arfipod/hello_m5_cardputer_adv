@@ -25,6 +25,7 @@
 #include "hardware/SdCard.hpp"
 #include "hardware/St7789Display.hpp"
 #include "hardware/Tca8418Keyboard.hpp"
+#include "services/WifiService.hpp"
 #include "ui/LvglPort.hpp"
 
 #ifndef APP_MODE_BOOT_INFO
@@ -57,8 +58,17 @@
 #ifndef APP_MODE_LVGL_DEMO
 #define APP_MODE_LVGL_DEMO 0
 #endif
+#ifndef APP_MODE_WIFI_TEST
+#define APP_MODE_WIFI_TEST 0
+#endif
 #ifndef APP_SMOKE_SD_WRITE
 #define APP_SMOKE_SD_WRITE 0
+#endif
+#ifndef APP_WIFI_SMOKE_SSID
+#define APP_WIFI_SMOKE_SSID ""
+#endif
+#ifndef APP_WIFI_SMOKE_PASSWORD
+#define APP_WIFI_SMOKE_PASSWORD ""
 #endif
 
 namespace cardputer::app::smoke_tests {
@@ -378,6 +388,46 @@ bool containsAddress(const std::array<uint8_t, 128>& addresses, size_t count, ui
 #endif
     idleLoop("lvgl_demo");
 }
+
+[[maybe_unused]] void runWifiTest() {
+    ESP_LOGI(TAG, "mode=wifi_test");
+#if APP_ENABLE_WIFI
+    services::WifiService wifi;
+    esp_err_t err = wifi.init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "WiFi init failed: %s", esp_err_to_name(err));
+        idleLoop("wifi_test");
+    }
+
+    std::array<services::WifiService::AccessPoint, services::WifiService::kMaxScanResults> aps{};
+    uint16_t count = aps.size();
+    err = wifi.scan(aps.data(), count);
+    ESP_LOGI(TAG, "WiFi scan result=%s count=%u", esp_err_to_name(err), static_cast<unsigned>(count));
+    if (err == ESP_OK) {
+        for (uint16_t index = 0; index < count; ++index) {
+            ESP_LOGI(TAG, " - ssid='%s' rssi=%d channel=%u encrypted=%d",
+                     aps[index].ssid, aps[index].rssi,
+                     static_cast<unsigned>(aps[index].channel), aps[index].encrypted);
+        }
+    }
+
+    if (std::strlen(APP_WIFI_SMOKE_SSID) > 0U) {
+        ESP_LOGI(TAG, "Connecting to configured WiFi smoke-test SSID");
+        err = wifi.connectStation(APP_WIFI_SMOKE_SSID, APP_WIFI_SMOKE_PASSWORD);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "WiFi connect start failed: %s", esp_err_to_name(err));
+            idleLoop("wifi_test");
+        }
+        err = wifi.waitForConnection(15000);
+        ESP_LOGI(TAG, "WiFi connection wait result=%s connected=%d", esp_err_to_name(err), wifi.isConnected());
+    } else {
+        ESP_LOGI(TAG, "No APP_WIFI_SMOKE_SSID provided; connect test skipped");
+    }
+#else
+    ESP_LOGW(TAG, "WiFi test requires APP_ENABLE_WIFI=1");
+#endif
+    idleLoop("wifi_test");
+}
 }  // namespace
 
 void runSelectedMode() {
@@ -399,6 +449,8 @@ void runSelectedMode() {
     runIrTest();
 #elif APP_MODE_LVGL_DEMO
     runLvglDemo();
+#elif APP_MODE_WIFI_TEST
+    runWifiTest();
 #else
     runBootInfo();
 #endif

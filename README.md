@@ -9,15 +9,17 @@ This repository is intentionally application-neutral. It provides a buildable pr
 - PlatformIO ESP-IDF environments for `m5stack-stamps3` and `esp32-s3-devkitc-1`.
 - Native test environment for portable code.
 - Generic `app_main()` and `App` shell.
+- Boot-time hook status logs for pending ES8311, BMI270, LVGL, WiFi, BLE and USB bring-up paths.
 - Build-flag-selected smoke-test modes.
 - `src/hardware/BoardPins.hpp` as the single source of truth for pin mapping.
 - HAL scaffolding for I2C, TCA8418, ES8311, I2S, ST7789, BMI270, microSD, battery ADC and IR.
-- Optional service shells for LVGL, USB, WiFi and BLE.
+- Optional service shells for LVGL, USB and BLE.
+- Optional WiFi service for ESP-IDF station init, scan, connect and connection wait.
 - GitHub Actions CI.
 
 ## Status
 
-Some paths are real and buildable but still require hardware validation. ES8311 codec init, BMI270 init, LVGL UI and USB/WiFi/BLE behavior are intentionally stubbed until their dependencies and board-specific sequences are verified.
+Some paths are real and buildable but still require hardware validation. ES8311 codec init, BMI270 init, LVGL UI and USB/BLE behavior are intentionally stubbed until their dependencies and board-specific sequences are verified. Missing bring-up paths return `ESP_ERR_NOT_SUPPORTED`.
 
 See [docs/audits/template-readiness-audit.md](docs/audits/template-readiness-audit.md).
 
